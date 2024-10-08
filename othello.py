@@ -16,6 +16,8 @@ class Orthello:
         self.grid = Grid(self.rows, self.columns, self.cell_size, self)
         
         self.font = pygame.font.Font(None, 36)
+        
+        self.ai = MinimaxAgent(depth=3)
 
         self.RUN = True
 
@@ -49,8 +51,39 @@ class Orthello:
                     self.grid.switch_player()
 
     def update(self):
-        pass
-    
+        # Check if the board is full
+        if self.grid.is_board_full():
+            white_count = self.grid.get_disk_count(1)
+            black_count = self.grid.get_disk_count(-1)
+            
+            # Determine the winner based on the counts
+            if white_count > black_count:
+                winner_text = "White wins!"
+            elif black_count > white_count:
+                winner_text = "Black wins!"
+            else:
+                winner_text = "It's a tie!"
+            
+            # Display the winner
+            winner_surface = self.font.render(winner_text, True, (255, 255, 255))
+            self.screen.blit(winner_surface, (self.screen_width // 2 - winner_surface.get_width() // 2, self.screen_height // 2))
+            pygame.display.update()
+
+            # Pause for a moment before quitting
+            pygame.time.delay(3000)
+            self.RUN = False  # Stop the game loop
+
+        # Check if it's the AI's turn (assume AI plays as black)
+        if self.grid.current_player == -1:
+            ai_move = self.ai.choose_move(self.grid, self.grid.current_player)
+            if ai_move is not None:
+                self.grid.make_move(ai_move[0], ai_move[1], self.grid.current_player)
+                self.grid.switch_player()
+            else:
+                print("AI has no valid moves.")
+                self.grid.switch_player()
+
+        
     def draw(self):
         self.screen.fill((0, 128, 0))  # Fills screen with green for the board
         self.grid.drawGrid(self.screen)  # Draw the grid
@@ -73,6 +106,51 @@ class Orthello:
         # Blit the text onto the screen
         self.screen.blit(current_player_surface, (10, 10))
         self.screen.blit(disk_count_surface, (10, 50))
+
+
+class MinimaxAgent:
+    def __init__(self, depth):
+        self.depth = depth
+
+    def evaluate_board(self, grid, player):
+        """Evaluate the board state by counting the difference in pieces."""
+        return grid.get_disk_count(player) - grid.get_disk_count(-player)
+
+    def minimax(self, grid, depth, maximizing_player):
+        """The minimax algorithm with depth limitation."""
+        if depth == 0 or grid.is_board_full():
+            return self.evaluate_board(grid, maximizing_player), None
+
+        valid_moves = grid.get_all_valid_moves(maximizing_player)
+
+        if len(valid_moves) == 0:
+            return self.evaluate_board(grid, maximizing_player), None
+
+        if maximizing_player == 1:  # White's turn, maximizing player
+            max_eval = float('-inf')
+            best_move = None
+            for move in valid_moves:
+                simulated_grid = grid.simulate_move(move[0], move[1], maximizing_player)
+                evaluation = self.minimax(simulated_grid, depth - 1, -maximizing_player)[0]
+                if evaluation > max_eval:
+                    max_eval = evaluation
+                    best_move = move
+            return max_eval, best_move
+        else:  # Black's turn, minimizing player
+            min_eval = float('inf')
+            best_move = None
+            for move in valid_moves:
+                simulated_grid = grid.simulate_move(move[0], move[1], maximizing_player)
+                evaluation = self.minimax(simulated_grid, depth - 1, -maximizing_player)[0]
+                if evaluation < min_eval:
+                    min_eval = evaluation
+                    best_move = move
+            return min_eval, best_move
+
+    def choose_move(self, grid, player):
+        """Choose the best move for the player using minimax."""
+        _, best_move = self.minimax(grid, self.depth, player)
+        return best_move
 
 class Grid:
     def __init__(self, rows, columns, cell_size, main):
@@ -162,8 +240,31 @@ class Grid:
                     return True
         return False
 
+    def is_board_full(self):
+        """Checks if the board is full."""
+        for row in self.gridLogic:
+            if 0 in row:  # If there is an empty space, the board is not full
+                return False
+        return True
+    
+    def simulate_move(self, row, col, player):
+        """Simulate a move and return a new grid with the move applied."""
+        new_grid = Grid(self.rows, self.columns, self.cell_size, self.GAME)
+        new_grid.gridLogic = [row.copy() for row in self.gridLogic]  # Deep copy of the grid
+        new_grid.make_move(row, col, player)
+        return new_grid
+
+    def get_all_valid_moves(self, player):
+        """Get all valid moves for the given player."""
+        valid_moves = []
+        for row in range(self.rows):
+            for col in range(self.columns):
+                if self.is_valid_move(row, col, player):
+                    valid_moves.append((row, col))
+        return valid_moves
+
+
 if __name__ == '__main__':
     game = Orthello()
     game.run()
     pygame.quit()
-
