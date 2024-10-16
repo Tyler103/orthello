@@ -1,6 +1,9 @@
 import pygame
 import sys
-
+# choose black/white player
+# Make intitial game screen - add our names
+# option to restart game
+# potential move options
 class Orthello:
     def __init__(self):
         self.screen_width = 640
@@ -8,20 +11,76 @@ class Orthello:
         pygame.init()
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption('Othello')
-        
+
         self.rows = 8
         self.columns = 8
         self.cell_size = 80
-        
+
         self.grid = Grid(self.rows, self.columns, self.cell_size, self)
-        
+
         self.font = pygame.font.Font(None, 36)
-        
+
         self.ai = MinimaxAgent(depth=3)
 
         self.RUN = True
 
+    def title_screen(self):
+        while True:
+            self.screen.fill((0, 128, 0))  # Green background
+            title_font = pygame.font.Font(None, 64)
+            title_surface = title_font.render("Othello", True, (200, 200, 0))
+            self.screen.blit(title_surface, (self.screen_width // 2 - title_surface.get_width() // 2, 100))
+    
+            # Button text surfaces
+            play_white_surface = self.font.render("Play First", True, (255, 255, 255))
+            play_black_surface = self.font.render("Play Second", True, (255, 255, 255))
+    
+            creators_surface = self.font.render("Created by Tyler Ton and Garrett Gmeiner", True, (255, 255, 255))
+            self.screen.blit(creators_surface, (self.screen_width // 2 - creators_surface.get_width() // 2, 200))
+
+            # Button positions
+            white_button_rect = pygame.Rect(self.screen_width // 2 - play_white_surface.get_width() // 2 - 10, 
+                                             300 - 10, 
+                                             play_white_surface.get_width() + 20, 
+                                             play_white_surface.get_height() + 20)
+    
+            black_button_rect = pygame.Rect(self.screen_width // 2 - play_black_surface.get_width() // 2 - 10, 
+                                             350 - 10, 
+                                             play_black_surface.get_width() + 20, 
+                                             play_black_surface.get_height() + 20)
+    
+            # Draw button boxes
+            pygame.draw.rect(self.screen, (255, 255, 255), white_button_rect, 2)  # White box
+            pygame.draw.rect(self.screen, (255, 255, 255), black_button_rect, 2)  # Black box
+    
+            # Blit the button text
+            self.screen.blit(play_white_surface, (self.screen_width // 2 - play_white_surface.get_width() // 2, 300))
+            self.screen.blit(play_black_surface, (self.screen_width // 2 - play_black_surface.get_width() // 2, 350))
+    
+            pygame.display.update()
+    
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+    
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = pygame.mouse.get_pos()
+                    print(f"Mouse clicked at: {x}, {y}")  # Debug print for mouse position
+                    if white_button_rect.collidepoint(x, y):  # Check if "Play as White" button is clicked
+                        print("Play as White clicked")  # Debug print
+                        self.start_game(1)  # Player plays as White
+                    elif black_button_rect.collidepoint(x, y):  # Check if "Play as Black" button is clicked
+                        print("Play as Black clicked")  # Debug print
+                        self.start_game(-1)  # Player plays as Black
+
+
+    def start_game(self, player_color):
+        self.grid.current_player = player_color  # Set the current player based on choice
+        self.run()  # Start the game loop
+
     def run(self):
+        #self.title_screen()  # Show title screen first
         while self.RUN:
             self.input()
             self.update()
@@ -52,9 +111,9 @@ class Orthello:
 
     def update(self):
         # Check if the board is full
-        if self.grid.is_board_full():
-            white_count = self.grid.get_disk_count(1)
-            black_count = self.grid.get_disk_count(-1)
+        white_count = self.grid.get_disk_count(1)
+        black_count = self.grid.get_disk_count(-1)
+        if self.grid.is_board_full() or black_count == 0 or white_count == 0:
             
             # Determine the winner based on the counts
             if white_count > black_count:
@@ -65,13 +124,21 @@ class Orthello:
                 winner_text = "It's a tie!"
             
             # Display the winner
-            winner_surface = self.font.render(winner_text, True, (255, 255, 255))
+            winner_surface = self.font.render(winner_text, True, (255, 255, 0))
             self.screen.blit(winner_surface, (self.screen_width // 2 - winner_surface.get_width() // 2, self.screen_height // 2))
             pygame.display.update()
 
-            # Pause for a moment before quitting
-            pygame.time.delay(3000)
-            self.RUN = False  # Stop the game loop
+            # Wait for a mouse click to quit
+            waiting_for_click = True
+            while waiting_for_click:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.RUN = False
+                        waiting_for_click = False
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        waiting_for_click = False  # Exit the waiting loop
+    
+            self.RUN = False  # Ensure the game loop stops after the click
 
         # Check if it's the AI's turn (assume AI plays as black)
         if self.grid.current_player == -1:
@@ -116,8 +183,8 @@ class MinimaxAgent:
         """Evaluate the board state by counting the difference in pieces."""
         return grid.get_disk_count(player) - grid.get_disk_count(-player)
 
-    def minimax(self, grid, depth, maximizing_player):
-        """The minimax algorithm with depth limitation."""
+    def minimax(self, grid, depth, maximizing_player, alpha=float('-inf'), beta=float('inf')):
+        """The minimax algorithm with alpha-beta pruning."""
         if depth == 0 or grid.is_board_full():
             return self.evaluate_board(grid, maximizing_player), None
 
@@ -131,20 +198,26 @@ class MinimaxAgent:
             best_move = None
             for move in valid_moves:
                 simulated_grid = grid.simulate_move(move[0], move[1], maximizing_player)
-                evaluation = self.minimax(simulated_grid, depth - 1, -maximizing_player)[0]
+                evaluation = self.minimax(simulated_grid, depth - 1, -maximizing_player, alpha, beta)[0]
                 if evaluation > max_eval:
                     max_eval = evaluation
                     best_move = move
+                alpha = max(alpha, evaluation)
+                if beta <= alpha:
+                    break  # Beta cut-off
             return max_eval, best_move
         else:  # Black's turn, minimizing player
             min_eval = float('inf')
             best_move = None
             for move in valid_moves:
                 simulated_grid = grid.simulate_move(move[0], move[1], maximizing_player)
-                evaluation = self.minimax(simulated_grid, depth - 1, -maximizing_player)[0]
+                evaluation = self.minimax(simulated_grid, depth - 1, -maximizing_player, alpha, beta)[0]
                 if evaluation < min_eval:
                     min_eval = evaluation
                     best_move = move
+                beta = min(beta, evaluation)
+                if beta <= alpha:
+                    break  # Alpha cut-off
             return min_eval, best_move
 
     def choose_move(self, grid, player):
@@ -266,5 +339,5 @@ class Grid:
 
 if __name__ == '__main__':
     game = Orthello()
-    game.run()
+    game.title_screen()
     pygame.quit()
