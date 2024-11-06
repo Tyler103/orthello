@@ -76,7 +76,7 @@ class Orthello:
                         self.start_game(-1)  # Player plays as Black
 
     def start_game(self, player_color):
-        self.grid.current_player = player_color  # Set the current player based on choice
+        self.grid.current_player = -1  # Set the current player based on choice
         print("player_color", player_color, self.grid.current_player) #TODO REMOVE
         self.run(player_color)  # Start the game loop
 
@@ -206,7 +206,6 @@ class MinimaxAgent:
 
     def evaluate_board(self, grid, player):
         """Evaluate the board state based on disc count, mobility, and position importance."""
-        print("Player", player, "opp", -player)
         opponent = -player
         score = 0
         
@@ -239,7 +238,6 @@ class MinimaxAgent:
 
         if len(valid_moves) == 0:
             return self.evaluate_board(grid, maximizing_player), None
-        print("TEST")
         if maximizing_player == 1:  # White's turn, maximizing player
             max_eval = float('-inf')
             best_move = None
