@@ -90,6 +90,7 @@ class Orthello:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.RUN = False
+                exit()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
@@ -134,8 +135,10 @@ class Orthello:
                     if event.type == pygame.QUIT:
                         self.RUN = False
                         waiting_for_click = False
+                        exit()
                     elif event.type == pygame.MOUSEBUTTONDOWN:
                         waiting_for_click = False  # Exit the waiting loop
+                        exit()
     
             self.RUN = False  # Ensure the game loop stops after the click
 
