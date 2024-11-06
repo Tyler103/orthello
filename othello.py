@@ -33,8 +33,8 @@ class Orthello:
             self.screen.blit(title_surface, (self.screen_width // 2 - title_surface.get_width() // 2, 100))
     
             # Button text surfaces
-            play_white_surface = self.font.render("Play First", True, (255, 255, 255))
-            play_black_surface = self.font.render("Play Second", True, (255, 255, 255))
+            play_white_surface = self.font.render("Play as White", True, (255, 255, 255))
+            play_black_surface = self.font.render("Play as Black", True, (255, 255, 255))
     
             creators_surface = self.font.render("Created by Tyler Ton and Garrett Gmeiner", True, (255, 255, 255))
             self.screen.blit(creators_surface, (self.screen_width // 2 - creators_surface.get_width() // 2, 200))
@@ -76,13 +76,14 @@ class Orthello:
                         self.start_game(-1)  # Player plays as Black
 
     def start_game(self, player_color):
-        self.grid.current_player = player_color  # Set the current player based on choice
-        self.run()  # Start the game loop
+        self.grid.current_player = -1  # Set the current player based on choice
+        print("player_color", player_color, self.grid.current_player) #TODO REMOVE
+        self.run(player_color)  # Start the game loop
 
-    def run(self):
+    def run(self, player_color):
         while self.RUN:
             self.input()
-            self.update()
+            self.update(player_color)
             self.draw()
             
     def input(self):
@@ -108,7 +109,7 @@ class Orthello:
                     print(f"Player {'White' if self.grid.current_player == 1 else 'Black'} has no valid moves. Passing turn.")
                     self.grid.switch_player()
 
-    def update(self):
+    def update(self, player_color):
         # Check if the board is full
         white_count = self.grid.get_disk_count(1)
         black_count = self.grid.get_disk_count(-1)
@@ -139,7 +140,7 @@ class Orthello:
             self.RUN = False  # Ensure the game loop stops after the click
 
         # Check if it's the AI's turn (assume AI plays as black)
-        if self.grid.current_player == -1:
+        if self.grid.current_player == -1 and player_color == 1:
             ai_move = self.ai.choose_move(self.grid, self.grid.current_player)
             if ai_move is not None:
                 self.grid.make_move(ai_move[0], ai_move[1], self.grid.current_player)
@@ -147,6 +148,15 @@ class Orthello:
             else:
                 print("AI has no valid moves.")
                 self.grid.switch_player()
+        elif self.grid.current_player == 1 and player_color == -1:
+            ai_move = self.ai.choose_move(self.grid, self.grid.current_player)
+            if ai_move is not None:
+                self.grid.make_move(ai_move[0], ai_move[1], self.grid.current_player)
+                self.grid.switch_player()
+            else:
+                print("AI has no valid moves.")
+                self.grid.switch_player()
+
 
     def draw(self):
         self.screen.fill((0, 128, 0))  # Fills screen with green for the board
@@ -196,7 +206,6 @@ class MinimaxAgent:
 
     def evaluate_board(self, grid, player):
         """Evaluate the board state based on disc count, mobility, and position importance."""
-        
         opponent = -player
         score = 0
         
@@ -229,7 +238,6 @@ class MinimaxAgent:
 
         if len(valid_moves) == 0:
             return self.evaluate_board(grid, maximizing_player), None
-
         if maximizing_player == 1:  # White's turn, maximizing player
             max_eval = float('-inf')
             best_move = None
