@@ -23,6 +23,7 @@ class Orthello:
         self.ai = MinimaxAgent(depth=3)
 
         self.RUN = True
+        self.valid_moves = []  # Initialize valid moves
 
     def title_screen(self):
         while True:
@@ -74,13 +75,11 @@ class Orthello:
                         print("Play as Black clicked")  # Debug print
                         self.start_game(-1)  # Player plays as Black
 
-
     def start_game(self, player_color):
         self.grid.current_player = player_color  # Set the current player based on choice
         self.run()  # Start the game loop
 
     def run(self):
-        #self.title_screen()  # Show title screen first
         while self.RUN:
             self.input()
             self.update()
@@ -114,7 +113,6 @@ class Orthello:
         white_count = self.grid.get_disk_count(1)
         black_count = self.grid.get_disk_count(-1)
         if self.grid.is_board_full() or black_count == 0 or white_count == 0:
-            
             # Determine the winner based on the counts
             if white_count > black_count:
                 winner_text = "White wins!"
@@ -150,10 +148,17 @@ class Orthello:
                 print("AI has no valid moves.")
                 self.grid.switch_player()
 
-        
     def draw(self):
         self.screen.fill((0, 128, 0))  # Fills screen with green for the board
         self.grid.drawGrid(self.screen)  # Draw the grid
+
+        # Draw faint circles on valid moves
+        for move in self.grid.get_all_valid_moves(self.grid.current_player):
+            row, col = move
+            x = col * self.cell_size + self.cell_size // 2
+            y = row * self.cell_size + self.cell_size // 2 + 80  # Adjust y for the header
+            radius = self.cell_size * 0.2  # Circle radius (20% of cell size)
+            pygame.draw.circle(self.screen, (0, 0, 255), (x, y), radius, 0)  # Faint blue circle
 
         # Display current player and disk counts
         self.display_info()
@@ -174,14 +179,46 @@ class Orthello:
         self.screen.blit(current_player_surface, (10, 10))
         self.screen.blit(disk_count_surface, (10, 50))
 
-
 class MinimaxAgent:
     def __init__(self, depth):
         self.depth = depth
+        
+        self.position_value = [
+            [100, 0, 0, 0, 0, 0, 0, 100],  # Emphasizing corners
+            [0, 0, 0, 0, 0, 0, 0, 0],      # Non-critical positions
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [100, 0, 0, 0, 0, 0, 0, 100]   # Emphasizing corners
+        ]
 
     def evaluate_board(self, grid, player):
-        """Evaluate the board state by counting the difference in pieces."""
-        return grid.get_disk_count(player) - grid.get_disk_count(-player)
+        """Evaluate the board state based on disc count, mobility, and position importance."""
+        
+        opponent = -player
+        score = 0
+        
+        # Disc Count (Parity)
+        player_count = grid.get_disk_count(player)
+        opponent_count = grid.get_disk_count(opponent)
+        score += player_count - opponent_count  # Favor player having more discs
+
+        # Number of Legal Moves
+        player_moves = len(grid.get_all_valid_moves(player))
+        opponent_moves = len(grid.get_all_valid_moves(opponent))
+        score += player_moves - opponent_moves  # Favor having more legal moves
+
+        # Importance of Particular Positions
+        for row in range(grid.rows):
+            for col in range(grid.columns):
+                if grid.gridLogic[row][col] == player:
+                    score += self.position_value[row][col]
+                elif grid.gridLogic[row][col] == opponent:
+                    score -= self.position_value[row][col]
+
+        return score
 
     def minimax(self, grid, depth, maximizing_player, alpha=float('-inf'), beta=float('inf')):
         """The minimax algorithm with alpha-beta pruning."""
