@@ -197,14 +197,14 @@ class MinimaxAgent:
         self.depth = depth
         
         self.position_value = [
-            [100, 0, 0, 0, 0, 0, 0, 100],  # Emphasizing corners
-            [0, 0, 0, 0, 0, 0, 0, 0],      # Non-critical positions
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [100, 0, 0, 0, 0, 0, 0, 100]   # Emphasizing corners
+            [100, -10, 10, 5, 5, 10, -10, 100],  # Emphasizing corners and edges
+            [-10, -20, 0, 0, 0, 0, -20, -10],     # More weight for edges
+            [10, 0, 1, 1, 1, 1, 0, 10],
+            [5, 0, 1, 0, 0, 1, 0, 5],
+            [5, 0, 0, 0, 0, 0, 0, 5],
+            [10, 0, 1, 0, 0, 1, 0, 10],
+            [-10, -20, 0, 0, 0, 0, -20, -10],
+            [100, -10, 10, 5, 5, 10, -10, 100]   # Emphasizing corners and edges
         ]
 
     def evaluate_board(self, grid, player):
@@ -230,7 +230,40 @@ class MinimaxAgent:
                 elif grid.gridLogic[row][col] == opponent:
                     score -= self.position_value[row][col]
 
+        # Additional strategic considerations
+        score += self.corner_control(grid, player)  # Add score for corners
+        score += self.edge_control(grid, player)    # Add score for edges
+
         return score
+
+    def corner_control(self, grid, player):
+        """Calculate score based on corner occupation."""
+        opponent = -player
+        corner_score = 0
+        corners = [(0, 0), (0, 7), (7, 0), (7, 7)]
+        
+        for corner in corners:
+            if grid.gridLogic[corner[0]][corner[1]] == player:
+                corner_score += 50  # High value for occupying corners
+            elif grid.gridLogic[corner[0]][corner[1]] == opponent:
+                corner_score -= 50  # Deduct value for opponent's corner occupation
+
+        return corner_score
+
+    def edge_control(self, grid, player):
+        """Calculate score based on edge occupation."""
+        opponent = -player
+        edge_score = 0
+        edges = [(0, col) for col in range(8)] + [(7, col) for col in range(8)] + \
+                [(row, 0) for row in range(1, 7)] + [(row, 7) for row in range(1, 7)]
+
+        for edge in edges:
+            if grid.gridLogic[edge[0]][edge[1]] == player:
+                edge_score += 5  # Add points for occupying edges
+            elif grid.gridLogic[edge[0]][edge[1]] == opponent:
+                edge_score -= 5  # Deduct points for opponent's edge occupation
+
+        return edge_score
 
     def minimax(self, grid, depth, maximizing_player, alpha=float('-inf'), beta=float('inf')):
         """The minimax algorithm with alpha-beta pruning."""
