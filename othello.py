@@ -6,24 +6,32 @@ import sys
 # potential move options
 class Orthello:
     def __init__(self):
+        # Initialize screen dimensions
         self.screen_width = 640
         self.screen_height = 740
+
+        # Initialize pygame
         pygame.init()
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption('Othello')
 
+        # Define game board parameters
         self.rows = 8
         self.columns = 8
         self.cell_size = 80
 
+        # Create the grid for the game
         self.grid = Grid(self.rows, self.columns, self.cell_size, self)
 
+        # Set up fonts for display text
         self.font = pygame.font.Font(None, 36)
 
+        # Create an AI agent with depth level for minimax
         self.ai = MinimaxAgent(depth=3)
 
+        # Define game state
         self.RUN = True
-        self.valid_moves = []  # Initialize valid moves
+        self.valid_moves = []  # Initialize list of valid moves
 
     def title_screen(self):
         while True:
@@ -58,9 +66,9 @@ class Orthello:
             self.screen.blit(play_white_surface, (self.screen_width // 2 - play_white_surface.get_width() // 2, 300))
             self.screen.blit(play_black_surface, (self.screen_width // 2 - play_black_surface.get_width() // 2, 350))
     
-            pygame.display.update()
+            pygame.display.update() # Updates board
     
-            for event in pygame.event.get():
+            for event in pygame.event.get(): # Checks for quit
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
@@ -75,16 +83,18 @@ class Orthello:
                         print("Play as Black clicked")  # Debug print
                         self.start_game(-1)  # Player plays as Black
 
+    # Start the game with the chosen player color
     def start_game(self, player_color):
         self.grid.current_player = -1  # Set the current player based on choice
-        print("player_color", player_color, self.grid.current_player) #TODO REMOVE
+        #print("player_color", player_color, self.grid.current_player) #DEBUG
         self.run(player_color)  # Start the game loop
 
+    # Main game loop
     def run(self, player_color):
         while self.RUN:
-            self.input()
-            self.update(player_color)
-            self.draw()
+            self.input()       # Handle player input
+            self.update(player_color)  # Update game state
+            self.draw()        # Draw game elements
             
     def input(self):
         for event in pygame.event.get():
@@ -142,7 +152,7 @@ class Orthello:
     
             self.RUN = False  # Ensure the game loop stops after the click
 
-        # Check if it's the AI's turn (assume AI plays as black)
+        # Check if it's the AI's turn and AI plays as white
         if self.grid.current_player == -1 and player_color == 1:
             ai_move = self.ai.choose_move(self.grid, self.grid.current_player)
             if ai_move is not None:
@@ -151,6 +161,7 @@ class Orthello:
             else:
                 print("AI has no valid moves.")
                 self.grid.switch_player()
+        # Check if it's the AI's turn and AI plays as black
         elif self.grid.current_player == 1 and player_color == -1:
             ai_move = self.ai.choose_move(self.grid, self.grid.current_player)
             if ai_move is not None:
@@ -178,6 +189,7 @@ class Orthello:
 
         pygame.display.update()  # Update the display
 
+    # Display current player and disk counts on screen
     def display_info(self):
         white_count = self.grid.get_disk_count(1)
         black_count = self.grid.get_disk_count(-1)
@@ -193,6 +205,7 @@ class Orthello:
         self.screen.blit(disk_count_surface, (10, 50))
 
 class MinimaxAgent:
+    # Set search depth and board position values for Minimax evaluation
     def __init__(self, depth):
         self.depth = depth
         
@@ -277,7 +290,7 @@ class MinimaxAgent:
         if maximizing_player == 1:  # White's turn, maximizing player
             max_eval = float('-inf')
             best_move = None
-            for move in valid_moves:
+            for move in valid_moves: # Finds best move
                 simulated_grid = grid.simulate_move(move[0], move[1], maximizing_player)
                 evaluation = self.minimax(simulated_grid, depth - 1, -maximizing_player, alpha, beta)[0]
                 if evaluation > max_eval:
